@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原料機能検索システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#4f8ef7;--accent2:#7c5cfc;--green:#2dd4a0;--yellow:#f5c842;
+  --red:#f75c5c;--orange:#f5954a;--text:#e8eaf6;--text2:#8b91b5;--text3:#565d82;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ---- Header ---- */
+.header{
+  background:linear-gradient(135deg,#1a1d27,#0f1117);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(10px);
+}
+.logo{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;opacity:.8;}
+.header-title{font-size:15px;font-weight:700;}
+.result-count{
+  font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);
+  background:var(--surface2);padding:4px 12px;border-radius:20px;border:1px solid var(--border);
+  white-space:nowrap;
+}
+.result-count span{color:var(--accent);font-weight:500;}
+.compare-btn{
+  margin-left:auto;
+  padding:7px 14px;border-radius:8px;border:none;
+  background:var(--accent2);color:#fff;font-size:12px;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer;font-weight:500;
+  transition:opacity .15s;display:flex;align-items:center;gap:6px;
+}
+.compare-btn:hover{opacity:.85;}
+.compare-btn .cnt{
+  background:rgba(255,255,255,.25);border-radius:10px;
+  padding:1px 7px;font-family:'DM Mono',monospace;
+}
+.header-clear{
+  padding:7px 12px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:12px;cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;transition:all .15s;
+}
+.header-clear:hover{border-color:var(--red);color:var(--red);}
+.hamburger{
+  display:none;background:none;border:1px solid var(--border);color:var(--text);
+  width:34px;height:34px;border-radius:7px;cursor:pointer;font-size:17px;
+  align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;
+}
+.hamburger:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ---- Layout ---- */
+.layout{display:flex;height:calc(100vh - 55px);}
+
+/* ---- Sidebar ---- */
+.sidebar{
+  width:280px;min-width:250px;flex-shrink:0;
+  background:var(--surface);border-right:1px solid var(--border);
+  overflow-y:auto;padding:16px 14px;
+}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:205;
+}
+.sidebar-overlay.open{display:block;}
+.sec-label{
+  font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text3);margin-bottom:8px;margin-top:18px;
+}
+.sec-label:first-child{margin-top:0;}
+.search-wrap{position:relative;}
+.search-input{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:13px;padding:9px 34px 9px 11px;
+  font-family:'Noto Sans JP',sans-serif;transition:border-color .2s;
+}
+.search-input:focus{outline:none;border-color:var(--accent);}
+.search-input::placeholder{color:var(--text3);}
+.search-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none;}
+.search-clear{
+  position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--text2);cursor:pointer;
+  font-size:15px;padding:2px 4px;line-height:1;z-index:1;transition:color .15s;
+}
+.search-clear:hover{color:var(--red);}
+.tag-grid{display:flex;flex-wrap:wrap;gap:5px;}
+.tag-btn{
+  padding:4px 9px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);font-size:11px;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;line-height:1.4;
+}
+.tag-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tag-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
+.filter-row{display:flex;flex-direction:column;gap:5px;}
+.filter-toggle{
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  padding:6px 10px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);font-size:12px;color:var(--text2);
+  transition:all .15s;user-select:none;
+}
+.filter-toggle:hover{border-color:var(--text3);}
+.filter-toggle.active{border-color:var(--green);color:var(--green);background:rgba(45,212,160,.08);}
+.toggle-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .15s;}
+.filter-toggle.active .toggle-dot{background:var(--green);}
+.reset-btn{
+  width:100%;padding:8px;border-radius:8px;margin-top:10px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text3);font-size:12px;cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;transition:all .15s;
+}
+.reset-btn:hover{border-color:var(--red);color:var(--red);}
+
+/* ---- Main ---- */
+.main{flex:1;overflow-y:auto;padding:14px;}
+.main::-webkit-scrollbar{width:4px;}
+.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ---- Cards grid ---- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px;}
+
+/* ---- Card ---- */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:14px;position:relative;
+  transition:border-color .25s,transform .2s,box-shadow .2s;
+}
+.card:hover{border-color:#3a4070;transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.card.matched{border-left:3px solid var(--accent);}
+.card.catalog-only{border-left:3px solid var(--text3);}
+
+/* Card checkbox */
+.card-check{
+  position:absolute;top:12px;right:12px;
+  width:18px;height:18px;border:2px solid var(--border);border-radius:4px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;background:var(--surface2);flex-shrink:0;
+}
+.card-check:hover{border-color:var(--accent2);}
+.card-check.checked{background:var(--accent2);border-color:var(--accent2);}
+.card-check.checked::after{content:"✓";font-size:11px;color:#fff;font-weight:700;}
+
+.card-header{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding-right:26px;}
+.card-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.4;flex:1;}
+.card-code{
+  font-family:'DM Mono',monospace;font-size:10px;
+  color:var(--accent);background:rgba(79,142,247,.1);
+  padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;
+}
+.card-maker{font-size:11px;color:var(--text2);margin-bottom:5px;}
+.card-inci{font-size:10px;color:var(--text3);margin-bottom:7px;line-height:1.5;}
+
+/* Tags with score bar */
+.card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.ctag{
+  font-size:10px;padding:2px 7px;border-radius:4px;
+  background:rgba(79,142,247,.12);color:var(--accent);
+  border:1px solid rgba(79,142,247,.2);
+  position:relative;overflow:hidden;display:inline-flex;align-items:center;
+}
+.ctag-bar{
+  position:absolute;left:0;top:0;bottom:0;
+  background:rgba(79,142,247,.2);z-index:0;pointer-events:none;
+}
+.ctag-label{position:relative;z-index:1;}
+.ctag.ctag-active{background:rgba(79,142,247,.25);color:#fff;border-color:var(--accent);font-weight:600;}
+.ctag.ctag-active .ctag-bar{background:rgba(79,142,247,.4);}
+.ctag-more{
+  font-size:10px;padding:2px 7px;border-radius:4px;
+  background:var(--surface2);color:var(--text3);border:1px solid var(--border);
+}
+
+/* Badges */
+.badges{display:flex;flex-wrap:wrap;gap:4px;}
+.badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;}
+.bj{background:rgba(45,212,160,.12);color:var(--green);border:1px solid rgba(45,212,160,.25);}
+.bn{background:var(--surface2);color:var(--text3);border:1px solid var(--border);}
+.bs{background:rgba(124,92,252,.12);color:var(--accent2);border:1px solid rgba(124,92,252,.25);}
+.bk{background:rgba(247,92,92,.12);color:var(--red);border:1px solid rgba(247,92,92,.25);}
+.bd{background:var(--surface2);color:var(--text3);border:1px solid var(--border);font-style:italic;}
+.bp{background:rgba(245,200,66,.12);color:var(--yellow);border:1px solid rgba(245,200,66,.25);cursor:pointer;}
+.bp:hover{background:rgba(245,200,66,.22);}
+.ba{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.25);}
+.bo{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.25);}
+.bev{background:rgba(99,179,237,.12);color:#63b3ed;border:1px solid rgba(99,179,237,.25);}
+
+/* State messages */
+.state-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:14px;color:var(--text3);}
+.state-msg .icon{font-size:36px;}
+.state-msg .msg{font-size:14px;line-height:1.6;text-align:center;}
+.state-msg.error .msg{color:var(--red);}
+.state-msg.done .msg{color:var(--green);}
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text3);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+.cards-footer{grid-column:1/-1;text-align:center;padding:18px;color:var(--text3);font-size:12px;font-family:'DM Mono',monospace;border-top:1px solid var(--border);margin-top:4px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes pulse-text{0%,100%{opacity:1;}50%{opacity:.4;}}
+.loading-text{animation:pulse-text 1.5s ease-in-out infinite;}
+.retry-btn{
+  padding:8px 20px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:12px;cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;transition:all .15s;
+}
+.retry-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ---- Compare Modal ---- */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;overflow-y:auto;padding:20px;}
+.modal-overlay.open{display:block;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:1200px;margin:0 auto;overflow:hidden;}
+.modal-header{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{background:none;border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.modal-body{overflow-x:auto;padding:18px;}
+.compare-table{border-collapse:collapse;width:100%;min-width:500px;}
+.compare-table th{background:var(--surface2);color:var(--text2);font-size:11px;font-weight:500;padding:9px 13px;text-align:left;border:1px solid var(--border);white-space:nowrap;}
+.compare-table td{padding:9px 13px;border:1px solid var(--border);font-size:12px;vertical-align:top;min-width:180px;max-width:300px;word-break:break-word;line-height:1.6;}
+.compare-table td.row-label{background:var(--surface2);color:var(--text2);font-size:11px;font-weight:500;white-space:nowrap;min-width:110px;max-width:none;}
+.pdf-link{display:inline-flex;align-items:center;gap:3px;color:var(--yellow);font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid rgba(245,200,66,.25);background:rgba(245,200,66,.08);text-decoration:none;margin:2px 0;transition:background .15s;}
+.pdf-link:hover{background:rgba(245,200,66,.18);}
+.pdf-nolink{font-size:11px;color:var(--text3);font-style:italic;}
+.modal-actions{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;}
+.btn-clear{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.btn-clear:hover{border-color:var(--red);color:var(--red);}
+.example-link{
+  display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;
+  border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--accent);font-size:11px;
+  text-decoration:none;transition:all .15s;
+}
+.example-link:hover{border-color:var(--accent);background:rgba(79,142,247,.15);}
+.add-product-btn{background:rgba(124,92,252,.1);color:var(--accent2);border-color:rgba(124,92,252,.3);margin-top:6px;}
+.add-product-btn:hover{background:rgba(124,92,252,.2);border-color:var(--accent2);}
+
+/* ---- 配合製品例 ---- */
+.product-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.product-item{padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);}
+.product-name{font-size:12px;font-weight:500;color:var(--text);margin-bottom:3px;line-height:1.4;}
+.product-maker{font-size:10px;color:var(--text3);margin-bottom:4px;}
+.product-link{
+  display:inline-block;font-size:10px;color:var(--accent);text-decoration:none;
+  padding:2px 8px;border-radius:4px;border:1px solid rgba(79,142,247,.3);
+  background:rgba(79,142,247,.1);transition:all .15s;
+}
+.product-link:hover{background:rgba(79,142,247,.2);}
+
+/* ---- PDF Popup ---- */
+.pdf-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;align-items:center;justify-content:center;padding:20px;}
+.pdf-popup.open{display:flex;}
+.pdf-popup-inner{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:480px;width:100%;}
+.pdf-popup-title{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text);}
+.pdf-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;}
+.pdf-item{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);transition:border-color .15s;}
+.pdf-item:hover{border-color:var(--yellow);}
+.pdf-item-name{font-size:11px;color:var(--text2);flex:1;word-break:break-all;line-height:1.4;}
+.pdf-item-link{flex-shrink:0;color:var(--yellow);font-size:11px;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid rgba(245,200,66,.3);white-space:nowrap;transition:background .15s;}
+.pdf-item-link:hover{background:rgba(245,200,66,.15);}
+.pdf-item-nolink{flex-shrink:0;color:var(--text3);font-size:11px;font-style:italic;}
+.pdf-popup-close{margin-top:14px;width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.pdf-popup-close:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ---- Responsive: Mobile ---- */
+@media(max-width:767px){
+  .hamburger{display:flex;}
+  .logo{display:none;}
+  .header{padding:10px 14px;gap:8px;}
+  .header-title{font-size:13px;}
+  .result-count{font-size:11px;padding:3px 9px;}
+  .layout{height:calc(100vh - 49px);}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;
+    width:280px;z-index:210;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+  }
+  .sidebar.open{transform:translateX(0);}
+  .cards{grid-template-columns:1fr;}
+  .compare-table th,.compare-table td{min-width:130px;}
+  .modal-overlay{padding:10px;}
+}
+
+/* ---- Responsive: Tablet ---- */
+@media(min-width:768px) and (max-width:1023px){
+  .sidebar{width:230px;min-width:200px;}
+  .cards{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ========== Header ========== -->
+<div class="header">
+  <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="メニュー">☰</button>
+  <div class="logo">Ingredient Search</div>
+  <div class="header-title">原料機能検索システム</div>
+  <div class="result-count"><span id="countNum">—</span> 件</div>
+  <button class="compare-btn" id="compareBtn" onclick="openCompare()">
+    比較 <span class="cnt" id="compareCount">0</span>
+  </button>
+  <button class="header-clear" id="clearBtn" style="display:none" onclick="clearCompare()">× クリア</button>
+</div>
+
+<div class="layout">
+
+  <!-- ========== Sidebar ========== -->
+  <div class="sidebar" id="sidebar">
+    <div class="sec-label">Search</div>
+    <div class="search-wrap">
+      <input id="searchInput" class="search-input" type="text"
+             placeholder="原料名・メーカー・INCI名・成分名で検索...">
+      <button id="searchClear" class="search-clear" onclick="clearSearch()" style="display:none" aria-label="クリア">×</button>
+      <span class="search-icon" id="searchIcon">🔍</span>
+    </div>
+
+    <div class="sec-label">Function Tags</div>
+    <div id="tagGrid" class="tag-grid"></div>
+
+    <div class="sec-label">Filters</div>
+    <div class="filter-row">
+      <div id="f-jisseki"      class="filter-toggle" onclick="toggleFilter('jisseki')"><span class="toggle-dot"></span>自社実績あり</div>
+      <div id="f-nojisseki"    class="filter-toggle" onclick="toggleFilter('nojisseki')"><span class="toggle-dot"></span>自社実績なし</div>
+      <div id="f-shikyu"       class="filter-toggle" onclick="toggleFilter('shikyu')"><span class="toggle-dot"></span>支給品のみ</div>
+      <div id="f-hide-kinshi"  class="filter-toggle" onclick="toggleFilter('hide-kinshi')"><span class="toggle-dot"></span>禁止原料を非表示</div>
+      <div id="f-hide-shimai"  class="filter-toggle" onclick="toggleFilter('hide-shimai')"><span class="toggle-dot"></span>終売・廃番を非表示</div>
+      <div id="f-catalog-only" class="filter-toggle" onclick="toggleFilter('catalog-only')"><span class="toggle-dot"></span>カタログあり原料のみ</div>
+      <div id="f-pdf-only"     class="filter-toggle" onclick="toggleFilter('pdf-only')"><span class="toggle-dot"></span>PDFリンクあり</div>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">× 条件をリセット</button>
+  </div>
+
+  <!-- ========== Main ========== -->
+  <div class="main">
+    <div id="stateArea" class="state-msg">
+      <div class="spinner"></div>
+      <div class="msg loading-text">データ読み込み中...</div>
+    </div>
+    <div id="cards" class="cards" style="display:none;"></div>
+  </div>
+
+</div>
+
+<!-- ========== Compare Modal ========== -->
+<div id="compareModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">原料比較</div>
+      <button class="modal-close" onclick="closeCompare()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="compareTableWrap"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-clear" onclick="clearCompare()">× すべてクリア</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PDF Popup ========== -->
+<div id="pdfPopup" class="pdf-popup">
+  <div class="pdf-popup-inner">
+    <div class="pdf-popup-title" id="pdfPopupTitle"></div>
+    <div class="pdf-list" id="pdfPopupList"></div>
+    <button class="pdf-popup-close" onclick="closePdfPopup()">閉じる</button>
+  </div>
+</div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9FlvjDsusCdoiODQNqz0kK4xn7DKlk4BXeIYvyJN-GF2JngVXcqL_AsTm1vHzdw/pub?output=csv';
+const MAX_DISPLAY = 200;
+const MAIN_TAGS = [
+  '保湿','ハリ','小ジワケア','バリア機能','抗炎症','抗シワ',
+  '毛髪ケア','くすみケア','たるみケア','美白','ニキビケア',
+  '毛穴ケア','頭皮ケア','フェイス洗浄','血行促進（クマケア）',
+  'ピーリング','唇ケア','むくみケア','抗酸化','抗菌','消臭',
+  'スリミング','からだのケア','UVケア','抗ウィルス'
+];
+const JISSEKI_EXCLUSIVE = ['jisseki','nojisseki','shikyu'];
+
+// ================================================================
+// テキスト正規化（全角→半角、大文字→小文字、空白正規化）
+// ================================================================
+function normalize(s) {
+  return String(s)
+    .toLowerCase()
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/　/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ================================================================
+// 採用事例検索リンク生成
+// ================================================================
+function buildCompanyExampleLinks(r) {
+  const keyword = r['表示名称(自社)'] || r['原料名'] || '';
+  if (!keyword.trim()) return '<span style="color:var(--text3)">—</span>';
+  const encoded = encodeURIComponent(keyword);
+  const cosmeUrl  = 'https://www.cosme.net/search/category/all/keyword/' + encoded + '/';
+  const googleUrl = 'https://www.google.com/search?q=' + encoded + '+%E5%8C%96%E7%B2%A7%E5%93%81';
+  return '<a class="example-link" href="' + cosmeUrl  + '" target="_blank" rel="noopener">@cosme で検索 ↗</a>'
+       + '<a class="example-link" href="' + googleUrl + '" target="_blank" rel="noopener">Google で検索 ↗</a>';
+}
+
+// ================================================================
+// 配合製品例 パース / HTML生成
+// ================================================================
+const SHEET_ID = '1UpwZ-E70kVkKm7hCUq6MErAbXZhFxVXS';
+const SHEET_GID = '198535869';
+const SHEET_EDIT_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit';
+
+// 統一IDから、Google Sheets上の行番号を求める
+//   ヘッダーが1行目、データが2行目から始まる前提
+//   DATAは統合マスタと同じ並びでロードされている
+function findSheetRow(r) {
+  const idx = DATA.indexOf(r);
+  return idx >= 0 ? idx + 2 : null;  // ヘッダー分 +1, 0始まり→1始まり +1
+}
+
+// 指定セル(列文字+行番号)を選択状態でSheetsを開くURL
+function buildCellUrl(colLetter, rowNum) {
+  return SHEET_EDIT_URL
+    + '?gid=' + SHEET_GID
+    + '&range=' + colLetter + rowNum
+    + '#gid=' + SHEET_GID;
+}
+
+function splitNameMaker(s) {
+  s = s.trim();
+  if (!s.endsWith(')')) return { name: s, maker: '' };
+  let depth = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    if (s[i] === ')') depth++;
+    else if (s[i] === '(') {
+      if (--depth === 0)
+        return { name: s.substring(0, i).trim(), maker: s.substring(i + 1, s.length - 1) };
+    }
+  }
+  return { name: s, maker: '' };
+}
+
+function parseOtherProducts(text) {
+  if (!text || !text.trim()) return [];
+  const products = [];
+  const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    if (!line.startsWith('・')) continue;
+    const content = line.slice(1).trim();
+    const urlMatch = content.match(/(https?:\/\/\S+)\s*$/);
+    const url = urlMatch ? urlMatch[1] : '';
+    const beforeUrl = url ? content.substring(0, urlMatch.index).trim() : content;
+    const { name, maker } = splitNameMaker(beforeUrl);
+    if (name) products.push({ name, maker, url });
+  }
+  return products;
+}
+
+function buildOtherProductsHTML(r) {
+  const products = parseOtherProducts(r['配合製品例'] || '');
+  const rowNum = findSheetRow(r);
+  const url = rowNum ? buildCellUrl('F', rowNum) : SHEET_EDIT_URL;
+  const editLink = '<a class="example-link add-product-btn" href="' + url
+    + '" target="_blank" rel="noopener" title="該当セル(F列)に直接ジャンプします">+ 配合製品例を追加 ↗</a>';
+  if (!products.length) {
+    return '<div style="color:var(--text3);font-style:italic;font-size:11px;margin-bottom:8px">'
+      + '(まだ登録されていません)</div>' + editLink;
+  }
+  let html = '<div class="product-list">';
+  products.forEach(p => {
+    html += '<div class="product-item">'
+      + '<div class="product-name">・' + escHtml(p.name) + '</div>'
+      + (p.maker ? '<div class="product-maker">メーカー: ' + escHtml(p.maker) + '</div>' : '')
+      + (p.url   ? '<a class="product-link" href="' + escHtml(p.url) + '" target="_blank" rel="noopener">商品ページ ↗</a>' : '')
+      + '</div>';
+  });
+  html += '</div>' + editLink;
+  return html;
+}
+
+// 活性成分の表示 + E列ジャンプボタン
+function buildActiveIngredientHTML(r) {
+  const value = (r['活性成分'] || '').trim();
+  const rowNum = findSheetRow(r);
+  const url = rowNum ? buildCellUrl('E', rowNum) : SHEET_EDIT_URL;
+  const editLink = '<a class="example-link add-product-btn" href="' + url
+    + '" target="_blank" rel="noopener" title="該当セル(E列)に直接ジャンプします">+ 活性成分を追加 ↗</a>';
+  if (!value) {
+    return '<div style="color:var(--text3);font-style:italic;font-size:11px;margin-bottom:8px">'
+      + '(まだ登録されていません)</div>' + editLink;
+  }
+  return '<div style="margin-bottom:8px">' + escHtml(value) + '</div>' + editLink;
+}
+
+// 比較テーブル行定義
+const COMPARE_ROWS = [
+  ['原料名',         r => escHtml(r['原料名'] || '—')],
+  ['メーカー',       r => escHtml((r['メーカー'] || '').split('｜')[0] || '—')],
+  ['INCI名',        r => escHtml(r['INCI名'] || '—')],
+  ['表示名称(自社)', r => escHtml(r['表示名称(自社)'] || '—')],
+  ['主要機能タグ',   r => escHtml(r['機能_主要タグ'] || '—')],
+  ['エビデンス in vitro', r => escHtml(r['エビデンスin vitro'] || '—')],
+  ['エビデンス in vivo',  r => escHtml(r['エビデンスin vivo']  || '—')],
+  ['推奨量',         r => escHtml(r['推奨量'] || '—')],
+  ['溶解性',         r => escHtml(r['溶解性'] || '—')],
+  ['安全性',         r => escHtml(r['安全性'] || '—')],
+  ['自社実績',       r => {
+    const j = r['自社状態'] || '', p = r['処方件数'] || '0';
+    return j === '有' ? '✓ あり（' + escHtml(p) + '処方）' : j === '支給' ? '支給' : '実績なし';
+  }],
+  ['自社原料コード', r => escHtml(r['自社原料コード'] || '—')],
+  ['価格(参考)',     r => escHtml(r['価格(参考)'] || '—')],
+  ['ステータス',     r => {
+    const s = [];
+    if ((r['自社状態'] || '') === '支給') s.push('支給');
+    if ((r['終売'] || '').trim()) s.push('終売/廃番');
+    if ((r['禁止フラグ'] || '').trim() === '●') s.push('禁止●');
+    return s.length ? escHtml(s.join(' / ')) : '—';
+  }],
+  ['関連PDF',       r => buildPdfLinksHTML(r)],
+  ['活性成分',       r => buildActiveIngredientHTML(r)],
+  ['配合製品例',     r => buildOtherProductsHTML(r)],
+  ['採用事例を探す', r => buildCompanyExampleLinks(r)],
+];
+
+// ================================================================
+// 状態
+// ================================================================
+let DATA        = [];
+let searchQuery = '';
+let activeTags  = new Set();
+let filters     = new Set();
+let checkedIds  = new Set();
+let renderTO    = null;
+
+// ================================================================
+// CSV パーサー
+// ================================================================
+function parseCSVRow(line) {
+  const result = [];
+  let field = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"' && line[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQ = false; }
+      else { field += c; }
+    } else {
+      if (c === '"') { inQ = true; }
+      else if (c === ',') { result.push(field); field = ''; }
+      else { field += c; }
+    }
+  }
+  result.push(field);
+  return result;
+}
+
+// CSV全体をクォート対応で行に分割する
+// (セル内改行が " ... " で囲まれている場合、その改行は無視する)
+function splitCSVLines(text) {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = [];
+  let current = '';
+  let inQ = false;
+  for (let i = 0; i < normalized.length; i++) {
+    const c = normalized[i];
+    if (c === '"') {
+      // エスケープされたクォート("")はクォート状態を切り替えない
+      if (inQ && normalized[i+1] === '"') {
+        current += '""';
+        i++;
+        continue;
+      }
+      inQ = !inQ;
+      current += c;
+    } else if (c === '\n' && !inQ) {
+      lines.push(current);
+      current = '';
+    } else {
+      current += c;
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
+}
+
+function parseCSV(text) {
+  const lines = splitCSVLines(text);
+  if (lines.length === 0) return [];
+  const headers = parseCSVRow(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVRow(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = vals[idx] ?? ''; });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+// ================================================================
+// HTML エスケープ / 属性エスケープ
+// ================================================================
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+// ================================================================
+// スコア取得
+// ================================================================
+function getTagScores(r) {
+  try { return r['tag_scores'] ? JSON.parse(r['tag_scores']) : {}; }
+  catch(e) { return {}; }
+}
+
+// ================================================================
+// タグ HTML（スコアバー付き）
+// ================================================================
+function buildTagsHTML(allTags, scores, activeSet) {
+  const active = allTags.filter(t => activeSet.has(t));
+  const rest   = allTags.filter(t => !activeSet.has(t));
+  rest.sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
+  const ordered = [...active, ...rest];
+  const visible = ordered.slice(0, 6);
+  const extra   = ordered.length - visible.length;
+
+  const tagHtml = visible.map(t => {
+    const score    = scores[t] || 0;
+    const isActive = activeSet.has(t);
+    const label    = score > 0 ? t + ' ' + score : t;
+    return '<span class="ctag' + (isActive ? ' ctag-active' : '') + '">'
+      + (score > 0 ? '<span class="ctag-bar" style="width:' + score + '%"></span>' : '')
+      + '<span class="ctag-label">' + escHtml(label) + '</span>'
+      + '</span>';
+  }).join('');
+
+  return tagHtml + (extra > 0 ? '<span class="ctag-more">+' + extra + '</span>' : '');
+}
+
+// ================================================================
+// PDF リスト取得
+// ================================================================
+function getPdfList(r) {
+  const names = (r['PDFファイル名'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  const urls  = (r['PDF_GoogleDriveURL'] || '').split(',').map(s => s.trim());
+  return names.map((name, i) => ({ name, url: urls[i] || '' }));
+}
+
+function buildPdfLinksHTML(r) {
+  const pdfs = getPdfList(r);
+  if (!pdfs.length) return '<span class="pdf-nolink">なし</span>';
+  return pdfs.map(p => {
+    const label = escHtml(p.name.length > 38 ? p.name.slice(0, 38) + '…' : p.name);
+    return p.url
+      ? '<a class="pdf-link" href="' + escHtml(p.url) + '" target="_blank" rel="noopener">📄 ' + label + '</a>'
+      : '<span class="pdf-nolink">📄 ' + label + '</span>';
+  }).join('<br>');
+}
+
+// ================================================================
+// カード生成
+// ================================================================
+function buildCard(r) {
+  const id    = r['統一ID'] || '';
+  const jotai = r['自社状態'] || '';
+  const usage = r['使用可否'] || '';
+  const code  = r['自社原料コード'] || '';
+  const maker = (r['メーカー'] || '').split('｜')[0].trim();
+  const inci  = r['INCI名'] || '';
+  const isCatalogOnly = id.startsWith('NEW');
+  const isChecked = checkedIds.has(id);
+
+  const tagsRaw = (r['機能_主要タグ'] || '').trim();
+  const allTags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const scores  = getTagScores(r);
+  const tagHTML = allTags.length ? buildTagsHTML(allTags, scores, activeTags) : '';
+
+  const pdfs = getPdfList(r);
+  const pdfLinked = pdfs.filter(p => p.url).length;
+  let pdfBadge = '';
+  if (pdfs.length > 0) {
+    pdfBadge = '<span class="badge bp" onclick="showPdf(\'' + escAttr(id) + '\')">'
+      + '📄 PDF ' + pdfs.length + '件' + (pdfLinked > 0 ? ' ↗' : '') + '</span>';
+  }
+
+  let badges = '';
+  if      (jotai === '有')   badges += '<span class="badge bj">✓ 自社採用</span>';
+  else if (jotai === '支給') badges += '<span class="badge bs">支給</span>';
+  else                        badges += '<span class="badge bn">実績なし</span>';
+  if (usage === '使用不可')   badges += '<span class="badge bk">● 使用不可</span>';
+  if (isCatalogOnly)          badges += '<span class="badge bd">カタログのみ</span>';
+  if ((r['アニマルフリー']     || '').trim()) badges += '<span class="badge ba">🌱 アニマルフリー</span>';
+  if ((r['オーガニック']       || '').trim()) badges += '<span class="badge bo">🌿 オーガニック</span>';
+  if ((r['エビデンスin vitro'] || '').trim()) badges += '<span class="badge bev" title="in vitroデータあり">🧪 in vitro</span>';
+  if ((r['エビデンスin vivo']  || '').trim()) badges += '<span class="badge bev" title="in vivoデータあり">🐁 in vivo</span>';
+  if ((r['配合製品例']          || '').trim()) badges += '<span class="badge bj">📦 採用例あり</span>';
+  badges += pdfBadge;
+
+  const inciStr = inci.length > 60 ? inci.slice(0, 60) + '…' : inci;
+  const cardClass = 'card ' + (isCatalogOnly ? 'catalog-only' : 'matched');
+
+  return '<div class="' + cardClass + '">'
+    + '<div class="card-check' + (isChecked ? ' checked' : '') + '" onclick="toggleCheck(\'' + escAttr(id) + '\',this)"></div>'
+    + '<div class="card-header">'
+    +   '<div class="card-name">' + escHtml(r['原料名'] || '') + '</div>'
+    +   (code ? '<div class="card-code">' + escHtml(code) + '</div>' : '')
+    + '</div>'
+    + (maker   ? '<div class="card-maker">' + escHtml(maker) + '</div>' : '')
+    + (inciStr ? '<div class="card-inci">' + escHtml(inciStr) + '</div>' : '')
+    + (tagHTML ? '<div class="card-tags">' + tagHTML + '</div>' : '')
+    + '<div class="badges">' + badges + '</div>'
+    + '</div>';
+}
+
+// ================================================================
+// マッチング
+// ================================================================
+// 検索対象列 ホワイトリスト
+// 以下の列は意図的に除外(検索ノイズ源のため):
+//   活性成分    … 他原料の活性成分名と被ってヒット
+//   配合製品例  … 他社化粧品の商品例が含まれる
+//   PDFファイル名 … 他原料の名前を含むファイル名がある
+const SEARCH_TARGET_COLUMNS = [
+  '原料名',
+  'メーカー',
+  'INCI名',
+  '機能_主要タグ',
+  '機能_元記述',
+  '表示名称(自社)',
+  '自社原料コード',
+];
+
+function matchSearch(r) {
+  if (!searchQuery) return true;
+  const h = normalize(SEARCH_TARGET_COLUMNS.map(c => r[c] || '').join(' '));
+  return searchQuery.split(/\s+/).filter(Boolean).every(q => h.includes(q));
+}
+function matchTags(r) {
+  if (!activeTags.size) return true;
+  const tagList = [
+    ...(r['機能_主要タグ'] || '').split(',').map(t => t.trim()),
+    ...(r['機能_元記述']   || '').split(',').map(t => t.trim()),
+  ];
+  for (const tag of activeTags) { if (!tagList.includes(tag)) return false; }
+  return true;
+}
+function matchFilters(r) {
+  if (filters.has('jisseki')      && r['自社状態'] !== '有') return false;
+  if (filters.has('nojisseki')    && r['自社状態'] !== '無') return false;
+  if (filters.has('shikyu')       && r['自社状態'] !== '支給') return false;
+  if (filters.has('hide-kinshi')  && (r['禁止フラグ'] || '').trim() === '●') return false;
+  if (filters.has('hide-shimai')  && (r['終売'] || '').trim() !== '') return false;
+  if (filters.has('catalog-only') && (r['統一ID'] || '').startsWith('NEW')) return false;
+  if (filters.has('pdf-only')     && !(r['PDF_GoogleDriveURL'] || '').trim()) return false;
+  return true;
+}
+
+// ================================================================
+// 描画
+// ================================================================
+function schedule() { clearTimeout(renderTO); renderTO = setTimeout(render, 200); }
+
+function render() {
+  const filtered = DATA.filter(r => matchSearch(r) && matchTags(r) && matchFilters(r));
+  document.getElementById('countNum').textContent = filtered.length.toLocaleString();
+  const shown = filtered.slice(0, MAX_DISPLAY);
+  const container = document.getElementById('cards');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🔬</div><div>該当する原料が見つかりませんでした</div></div>';
+    return;
+  }
+  let html = shown.map(buildCard).join('');
+  if (filtered.length > MAX_DISPLAY) {
+    html += '<div class="cards-footer">上位 ' + MAX_DISPLAY + ' 件を表示 / 全 ' + filtered.length.toLocaleString() + ' 件 — 条件を絞り込んでください</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ================================================================
+// タグボタン / フィルタ
+// ================================================================
+function buildTagButtons() {
+  const grid = document.getElementById('tagGrid');
+  MAIN_TAGS.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-btn'; btn.textContent = tag;
+    btn.onclick = () => {
+      activeTags.has(tag) ? (activeTags.delete(tag), btn.classList.remove('active'))
+                          : (activeTags.add(tag),    btn.classList.add('active'));
+      schedule();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function toggleFilter(id) {
+  const el = document.getElementById('f-' + id);
+  if (filters.has(id)) {
+    filters.delete(id); el.classList.remove('active');
+  } else {
+    if (JISSEKI_EXCLUSIVE.includes(id)) {
+      JISSEKI_EXCLUSIVE.forEach(o => {
+        if (o !== id && filters.has(o)) { filters.delete(o); document.getElementById('f-'+o).classList.remove('active'); }
+      });
+    }
+    filters.add(id); el.classList.add('active');
+  }
+  schedule();
+}
+
+function resetAll() {
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  document.getElementById('searchIcon').style.display = '';
+  activeTags.clear(); document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+  filters.clear();
+  ['jisseki','nojisseki','shikyu','hide-kinshi','hide-shimai','catalog-only','pdf-only']
+    .forEach(id => document.getElementById('f-'+id).classList.remove('active'));
+  schedule();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchQuery = '';
+  document.getElementById('searchClear').style.display = 'none';
+  document.getElementById('searchIcon').style.display = '';
+  schedule();
+}
+
+// ================================================================
+// 比較機能
+// ================================================================
+function toggleCheck(id, el) {
+  if (checkedIds.has(id)) { checkedIds.delete(id); el.classList.remove('checked'); }
+  else                    { checkedIds.add(id);    el.classList.add('checked'); }
+  updateCompareBtn();
+}
+
+function updateCompareBtn() {
+  const n = checkedIds.size;
+  document.getElementById('compareCount').textContent = n;
+  document.getElementById('clearBtn').style.display = n > 0 ? '' : 'none';
+}
+
+function openCompare() {
+  if (!checkedIds.size) { alert('比較する原料にチェックを入れてください。'); return; }
+  const items = DATA.filter(r => checkedIds.has(r['統一ID']));
+
+  let th = '<th style="min-width:100px">項目</th>';
+  items.forEach(r => { th += '<th style="min-width:190px">' + escHtml(r['原料名'] || '') + '</th>'; });
+
+  let tbody = '';
+  COMPARE_ROWS.forEach(([label, fn]) => {
+    let tr = '<tr><td class="row-label">' + escHtml(label) + '</td>';
+    items.forEach(r => { tr += '<td>' + fn(r) + '</td>'; });
+    tbody += tr + '</tr>';
+  });
+
+  document.getElementById('compareTableWrap').innerHTML =
+    '<table class="compare-table"><thead><tr>' + th + '</tr></thead><tbody>' + tbody + '</tbody></table>';
+  document.getElementById('compareModal').classList.add('open');
+}
+
+function closeCompare() { document.getElementById('compareModal').classList.remove('open'); }
+
+function clearCompare() {
+  checkedIds.clear();
+  document.querySelectorAll('.card-check.checked').forEach(el => el.classList.remove('checked'));
+  updateCompareBtn();
+  closeCompare();
+}
+
+// ================================================================
+// PDF ポップアップ
+// ================================================================
+function showPdf(id) {
+  const r = DATA.find(r => r['統一ID'] === id);
+  if (!r) return;
+  const pdfs = getPdfList(r);
+  document.getElementById('pdfPopupTitle').textContent = '📄 ' + (r['原料名'] || '') + ' — 関連PDF';
+  const list = document.getElementById('pdfPopupList');
+  list.innerHTML = '';
+  pdfs.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pdf-item';
+    item.innerHTML = '<span class="pdf-item-name">' + escHtml(p.name) + '</span>'
+      + (p.url
+          ? '<a class="pdf-item-link" href="' + escHtml(p.url) + '" target="_blank" rel="noopener">開く</a>'
+          : '<span class="pdf-item-nolink">リンクなし</span>');
+    list.appendChild(item);
+  });
+  document.getElementById('pdfPopup').classList.add('open');
+}
+
+function closePdfPopup() { document.getElementById('pdfPopup').classList.remove('open'); }
+
+// ================================================================
+// モバイルサイドバー
+// ================================================================
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  const isOpen = sb.classList.toggle('open');
+  ov.classList.toggle('open', isOpen);
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+// ================================================================
+// イベントリスナー
+// ================================================================
+document.getElementById('compareModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCompare(); });
+document.getElementById('pdfPopup').addEventListener('click',    e => { if (e.target === e.currentTarget) closePdfPopup(); });
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('pdfPopup').classList.contains('open'))     { closePdfPopup(); return; }
+  if (document.getElementById('compareModal').classList.contains('open')) { closeCompare();  return; }
+  if (document.getElementById('sidebar').classList.contains('open'))      { closeSidebar();  }
+});
+
+// ================================================================
+// 状態表示 / データ取得
+// ================================================================
+function showLoading() {
+  const el = document.getElementById('stateArea');
+  el.className = 'state-msg';
+  el.innerHTML = '<div class="spinner"></div><div class="msg loading-text">データ読み込み中...</div>';
+  el.style.display = 'flex'; document.getElementById('cards').style.display = 'none';
+}
+
+function showError(msg) {
+  const el = document.getElementById('stateArea');
+  el.className = 'state-msg error';
+  el.innerHTML = '<div class="icon">⚠️</div><div class="msg">' + escHtml(msg) + '</div>'
+    + '<button class="retry-btn" onclick="loadData()">↺ 再試行</button>';
+  el.style.display = 'flex'; document.getElementById('cards').style.display = 'none';
+}
+
+function showDone(count) {
+  const el = document.getElementById('stateArea');
+  el.className = 'state-msg done';
+  el.innerHTML = '<div class="icon">✓</div><div class="msg">' + count.toLocaleString() + ' 件読み込みました</div>';
+  el.style.display = 'flex';
+  setTimeout(() => { el.style.display = 'none'; document.getElementById('cards').style.display = 'grid'; }, 1000);
+}
+
+async function loadData() {
+  showLoading();
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    DATA = parseCSV(text);
+    document.getElementById('countNum').textContent = DATA.length.toLocaleString();
+    render();
+    showDone(DATA.length);
+  } catch(e) {
+    showError('読み込みエラー: ' + e.message);
+  }
+}
+
+// ================================================================
+// 起動
+// ================================================================
+buildTagButtons();
+document.getElementById('searchInput').addEventListener('input', e => {
+  const raw = e.target.value;
+  searchQuery = normalize(raw);
+  const hasVal = raw.length > 0;
+  document.getElementById('searchClear').style.display = hasVal ? '' : 'none';
+  document.getElementById('searchIcon').style.display  = hasVal ? 'none' : '';
+  schedule();
+});
+loadData();
+</script>
+</body>
+</html>
